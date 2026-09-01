@@ -71,7 +71,7 @@ Assignment/
 ├── search.py
 ├── requirements.txt
 ├── README.md
-├── chroma_db/
+├── catalogue.db
 ├── data/
 │   └── series_catalogue_raw.csv
 └── venv/
