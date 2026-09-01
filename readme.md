@@ -83,9 +83,8 @@ Assignment/
 
 | Tool | Purpose |
 | --- | --- |
-| sqlite3 | Relational storage (source of truth) |
-| chromadb | Vector database for semantic search |
-| sentence-transformers | Embedding generation |
+| sqlite3 | Unified storage engine for metadata, hierarchy, FTS5 lexical index, and single source of truth (catalogue.db). |
+| sentence-transformers | Embedding generation (all-MiniLM-L6-v2) |
 | pandas | Data ingestion and cleaning |
 | openpyxl | Excel file handling |
 | re | Tokenization |
@@ -152,8 +151,8 @@ The system uses a hybrid retrieval approach combining lexical and semantic signa
 ### 1. Semantic Search
 
 - Model: `sentence-transformers/all-MiniLM-L6-v2`
-- Embeddings are stored in ChromaDB.
-- The query is converted into an embedding and matched via similarity.
+- Embeddings are computed during ingestion and stored directly as binary blobs in catalogue.db.
+- The query vector is generated at search time and matched against stored vectors using cosine similarity.
 
 ### 2. Lexical Matching
 
@@ -187,19 +186,16 @@ final_score = (
 
 ## 6. Indexing Strategy
 
-The system uses persistent ChromaDB storage:
+The system uses SQLite persistent database storage (catalogue.db):
 
 ```python
-chromadb.PersistentClient(path=CHROMA_PATH)
+# Save metadata and dense embeddings directly into SQLite table
+cursor.execute(
+    "INSERT OR REPLACE INTO series_catalogue VALUES (?, ?, ..., ?)",
+    (*record_values, embedding_blob)
+)
 ```
-
-Index creation:
-
-```python
-collection.upsert(...)
-```
-
-This supports incremental updates without requiring a full rebuild.
+This ensures that all metadata, search texts, and vector embeddings reside in a single database file, supporting incremental updates without needing an external vector database service.
 
 ---
 
@@ -256,10 +252,11 @@ def agent(query):
 | Vector-only | Misses exact domain terms |
 | Hybrid | Combines both strengths |
 
-### Why SQLite + ChromaDB?
+### Why Single-File SQLite Storage?
 
-- SQLite → structured metadata filtering
-- ChromaDB → semantic similarity search
+- **Zero Synchronization Lag:** Relational metadata, full-text indexes, and vector embeddings remain in one single file (`catalogue.db`).
+- **Simplified Deployment:** No need to install, configure, or run a separate vector store like ChromaDB.
+- **Data Integrity:** ACID compliance ensures transactional updates across metadata and embeddings.
 
 ---
 
@@ -267,17 +264,15 @@ def agent(query):
 
 ### Current Limitations
 
-- No typo correction (for example, "Indgo")
-- Full table scan in SQLite during scoring
-- No threshold filtering for low-confidence results
-- Limited filtering inside the vector database
+- No typo correction (for example, "Indgo").
+- Full table scan in SQLite during vector similarity scoring.
+- No threshold filtering for low-confidence results.
 
 ### Future Enhancements
 
-- Add fuzzy matching and spell correction
-- Optimize queries using vector candidate filtering
-- Introduce score thresholding
-- Push filters into ChromaDB
+- Add fuzzy matching and spell correction.
+- Use SQLite vector extensions (such as `sqlite-vec`) for accelerated vector indexing.
+- Introduce score thresholding to ignore irrelevant queries.
 
 ---
 
