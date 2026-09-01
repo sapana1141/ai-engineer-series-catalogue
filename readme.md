@@ -85,6 +85,7 @@ Assignment/
 | --- | --- |
 | sqlite3 | Unified storage engine for metadata, hierarchy, FTS5 lexical index, and single source of truth (catalogue.db). |
 | sentence-transformers | Embedding generation (all-MiniLM-L6-v2) |
+| numpy | Mathematical operations for calculating cosine similarity between vectors in-memory |
 | pandas | Data ingestion and cleaning |
 | openpyxl | Excel file handling |
 | re | Tokenization |
