@@ -1,9 +1,8 @@
 import argparse
 import sqlite3
-
 import pandas as pd
-
-from config import DB_PATH
+import numpy as np
+from config import DB_PATH, EMBED_MODEL
 
 
 def read_input(file_path):
@@ -77,6 +76,16 @@ def ingest(file_path):
     print(f"Columns: {df.columns.tolist()}")
 
     df = clean_data(df)
+    
+    print("Loading AI Model...")
+    model = SentenceTransformer(EMBED_MODEL)
+
+    print("Generating vector embeddings (this may take a few seconds)...")
+    # 1. Convert the 'search_text' column into a list of vectors
+    raw_embeddings = model.encode(df["search_text"].tolist(), show_progress_bar=True)
+
+    # 2. Convert the vectors to binary bytes (BLOB) and add as a DataFrame column
+    df["embedding"] = [np.array(emb, dtype=np.float32).tobytes() for emb in raw_embeddings]
 
     conn = sqlite3.connect(DB_PATH)
 
